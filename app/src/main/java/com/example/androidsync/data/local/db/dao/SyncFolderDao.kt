@@ -21,4 +21,7 @@ interface SyncFolderDao {
 
     @Query("SELECT * FROM sync_folders WHERE uri = :uri LIMIT 1")
     suspend fun getByUri(uri: String): SyncFolder?
+
+    @Query("SELECT * FROM sync_folders WHERE id = :id")
+    fun getById(id: Long): Flow<SyncFolder?>
 }
