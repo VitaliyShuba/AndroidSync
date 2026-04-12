@@ -4,6 +4,7 @@ import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -43,9 +44,10 @@ import org.koin.androidx.compose.koinViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FolderListScreen(
+    onFolderClick: (SyncFolder) -> Unit = {},
     viewModel: FolderListViewModel = koinViewModel(),
 ) {
-    val folders by viewModel.folders.collectAsStateWithLifecycle()
+    val foldersWithCounts by viewModel.foldersWithCounts.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     val folderPickerLauncher = rememberLauncherForActivityResult(
@@ -71,12 +73,13 @@ fun FolderListScreen(
             }
         },
     ) { innerPadding ->
-        if (folders.isEmpty()) {
+        if (foldersWithCounts.isEmpty()) {
             EmptyState(modifier = Modifier.padding(innerPadding))
         } else {
             FolderList(
-                folders = folders,
-                onRemove = viewModel::removeFolder,
+                foldersWithCounts = foldersWithCounts,
+                onClick = { onFolderClick(it.folder) },
+                onRemove = { viewModel.removeFolder(it.folder) },
                 contentPadding = innerPadding,
             )
         }
@@ -112,8 +115,9 @@ private fun EmptyState(modifier: Modifier = Modifier) {
 
 @Composable
 private fun FolderList(
-    folders: List<SyncFolder>,
-    onRemove: (SyncFolder) -> Unit,
+    foldersWithCounts: List<FolderWithCount>,
+    onClick: (FolderWithCount) -> Unit,
+    onRemove: (FolderWithCount) -> Unit,
     contentPadding: PaddingValues,
 ) {
     LazyColumn(
@@ -123,18 +127,27 @@ private fun FolderList(
             .fillMaxSize()
             .padding(horizontal = 16.dp),
     ) {
-        items(folders, key = { it.id }) { folder ->
-            FolderItem(folder = folder, onRemove = { onRemove(folder) })
+        items(foldersWithCounts, key = { it.folder.id }) { item ->
+            FolderItem(
+                item = item,
+                onClick = { onClick(item) },
+                onRemove = { onRemove(item) },
+            )
         }
     }
 }
 
 @Composable
 private fun FolderItem(
-    folder: SyncFolder,
+    item: FolderWithCount,
+    onClick: () -> Unit,
     onRemove: () -> Unit,
 ) {
-    Card(modifier = Modifier.fillMaxWidth()) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+    ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -149,11 +162,11 @@ private fun FolderItem(
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = folder.displayName,
+                    text = item.folder.displayName,
                     style = MaterialTheme.typography.titleSmall,
                 )
                 Text(
-                    text = Uri.parse(folder.uri).lastPathSegment ?: folder.uri,
+                    text = if (item.fileCount > 0) "${item.fileCount} files" else "Not scanned yet",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

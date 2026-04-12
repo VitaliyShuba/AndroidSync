@@ -27,4 +27,6 @@ class SyncFolderRepository(
     suspend fun isFolderAlreadyAdded(uri: String): Boolean {
         return syncFolderDao.getByUri(uri) != null
     }
+
+    fun getById(id: Long): Flow<SyncFolder?> = syncFolderDao.getById(id)
 }
